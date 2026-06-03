@@ -190,6 +190,66 @@ Use this as a starting skeleton — it parses and renders in this player:
 }
 ```
 
+## Exposing editable properties (slots + the properties panel)
+
+The app can render a live **properties panel** (text inputs and sliders) that
+edit chosen values of the animation in real time. This rides on Skottie's
+native **slot** feature — no re-parse, the change shows on the next frame.
+
+To make a property editable, do two things:
+
+**1. Declare a slot in the Lottie JSON.** Add a top-level `"slots"` object whose
+keys are slot IDs, and point a property at one with `"sid"` instead of (or
+alongside) an inline value. The slot's `"p"` holds the default, in the same
+shape the property would normally take.
+
+```jsonc
+{
+  "v": "5.7.0", "fr": 60, "ip": 0, "op": 90, "w": 512, "h": 512, "assets": [],
+  "slots": {
+    "ballColor": { "p": { "a": 0, "k": [0.231, 0.6, 1, 1] } },   // color: RGBA 0–1
+    "ballSize":  { "p": { "a": 0, "k": 120 } }                    // scalar
+  },
+  "layers": [ /* ... */
+    // in the fill:    "c": { "sid": "ballColor" }
+    // in a scalar:    "s": { "sid": "ballSize" }
+  ]
+}
+```
+
+Slot types map to controls like this:
+
+| Slot value | Control rendered |
+|------------|------------------|
+| scalar (a single number) | slider |
+| color (RGBA 0–1)         | color picker |
+| vec2 (`[x, y]`)          | two number inputs |
+| text (a string)          | text input |
+
+The app discovers slots automatically via Skottie's `getSlotInfo()` — you do
+**not** list them anywhere else for them to work. The panel appears as soon as
+the animation declares at least one slot.
+
+**2. (Optional) Describe presentation in `public/controls.json`.** Slots only
+expose an ID and type, not a label or a sensible slider range. The sidecar file
+adds that. It is optional — missing entries fall back to the slot ID and a
+generic 0–100 range. Like `lottie.json`, it hot-reloads on save.
+
+```jsonc
+{
+  "controls": [
+    { "sid": "ballColor", "label": "Ball color" },
+    { "sid": "ballSize",  "label": "Ball size", "min": 40, "max": 240, "step": 1 }
+  ]
+}
+```
+
+- `sid` must match a slot ID exactly.
+- `label` is the display name; `min`/`max`/`step` shape scalar sliders and vec2
+  inputs (ignored for color/text).
+- An entry whose `sid` matches no slot is simply ignored; a slot with no entry
+  still renders with defaults.
+
 ## Before you finish — checklist
 
 1. The file is valid JSON (no comments, no trailing commas). Validate with

@@ -47,11 +47,14 @@ export function PlaybackControls({
           aria-label="Seek"
         />
 
-        <div className="shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
-          <span className="text-foreground">{String(frame).padStart(pad, "0")}</span>
-          {" / "}
-          {max}
-          <span className="ml-2 text-muted-foreground/70">{fps} fps</span>
+        <div className="shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground flex items-center gap-2">
+          <span>
+            <span className="text-foreground">{String(frame).padStart(pad, "0")}</span>
+            {" / "}
+            {max}
+          </span>
+          <div className="h-5 w-px bg-muted-foreground/20" />
+          <span className="text-muted-foreground/70">{fps}FPS</span>
         </div>
       </CardContent>
     </Card>

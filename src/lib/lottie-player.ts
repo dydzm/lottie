@@ -22,6 +22,13 @@ export function loadCanvasKit(): Promise<CanvasKit> {
 // How aggressively a wheel/pinch gesture changes zoom.
 const ZOOM_SENSITIVITY = 0.0015;
 
+/** A property the animation has marked as slottable, with its current value. */
+export type AnimationSlot =
+  | { id: string; type: "scalar"; value: number }
+  | { id: string; type: "color"; value: [number, number, number, number] }
+  | { id: string; type: "vec2"; value: [number, number] }
+  | { id: string; type: "text"; value: string };
+
 export interface LottiePlayerCallbacks {
   /** Fired every rendered frame with the playhead frame and total frame count. */
   onFrame?: (currentFrame: number, totalFrames: number) => void;
@@ -92,6 +99,66 @@ export class LottiePlayer {
 
   getZoom(): number {
     return this.camera.zoom;
+  }
+
+  // --- Slots (live property overrides) ------------------------------------
+  //
+  // Skottie exposes properties the animation author marked as "slottable" (see
+  // the `slots`/`sid` convention in the write-lottie skill). They can be read
+  // and overwritten live without re-parsing — overriding one just shows on the
+  // next rendered frame. `getSlotInfo()` reports the IDs grouped by type.
+
+  /** Lists every slottable property with its current value. */
+  getSlots(): AnimationSlot[] {
+    const info = this.animation.getSlotInfo();
+    const slots: AnimationSlot[] = [];
+    for (const id of info.scalarSlotIDs) {
+      slots.push({ id, type: "scalar", value: this.animation.getScalarSlot(id) ?? 0 });
+    }
+    for (const id of info.colorSlotIDs) {
+      const c = this.animation.getColorSlot(id);
+      slots.push({
+        id,
+        type: "color",
+        value: c ? [c[0], c[1], c[2], c[3]] : [0, 0, 0, 1],
+      });
+    }
+    for (const id of info.vec2SlotIDs) {
+      const v = this.animation.getVec2Slot(id);
+      slots.push({ id, type: "vec2", value: v ? [v[0], v[1]] : [0, 0] });
+    }
+    for (const id of info.textSlotIDs) {
+      slots.push({ id, type: "text", value: this.animation.getTextSlot(id)?.text ?? "" });
+    }
+    return slots;
+  }
+
+  /** Overrides a scalar slot. Color/vec2 components are 0..1 / animation units. */
+  setScalarSlot(id: string, value: number): void {
+    this.animation.setScalarSlot(id, value);
+    this.dirty = true;
+  }
+
+  /** Overrides a color slot. Components are 0..1, RGBA. */
+  setColorSlot(id: string, rgba: [number, number, number, number]): void {
+    this.animation.setColorSlot(id, this.ck.Color4f(rgba[0], rgba[1], rgba[2], rgba[3]));
+    this.dirty = true;
+  }
+
+  /** Overrides a 2D vector slot (e.g. a position), in animation coordinates. */
+  setVec2Slot(id: string, xy: [number, number]): void {
+    this.animation.setVec2Slot(id, xy);
+    this.dirty = true;
+  }
+
+  /** Overrides a text slot's string, preserving the slot's existing styling. */
+  setTextSlot(id: string, text: string): void {
+    const current = this.animation.getTextSlot(id);
+    if (!current) return;
+    current.text = text;
+    // The constructor fills out any fields the bindings require as defaults.
+    this.animation.setTextSlot(id, new this.ck.SlottableTextProperty(current));
+    this.dirty = true;
   }
 
   isPlaying(): boolean {

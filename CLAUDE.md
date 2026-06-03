@@ -37,7 +37,9 @@ npm run dev    # then open the printed local URL
 ## Project layout
 
 - [`public/lottie.json`](public/lottie.json) — the animation the app renders. **Edit this to change the output.**
-- [`src/lib/lottie-player.ts`](src/lib/lottie-player.ts) — the `LottiePlayer`: CanvasKit surface, rAF loop, frame-based playhead, camera input.
+- [`public/controls.json`](public/controls.json) — optional sidecar: labels and slider ranges for the animation's slottable properties (see the write-lottie skill). Drives the live properties panel.
+- [`src/lib/lottie-player.ts`](src/lib/lottie-player.ts) — the `LottiePlayer`: CanvasKit surface, rAF loop, frame-based playhead, camera input, slot get/set.
+- [`src/components/PropertiesPanel.tsx`](src/components/PropertiesPanel.tsx) — auto-generated text/slider/color controls bound to the animation's slots.
 - [`src/lib/camera.ts`](src/lib/camera.ts) — Figma-style pan/zoom math.
 - [`src/App.tsx`](src/App.tsx) — fetches the Lottie file and wires the player to the UI.
 - [`vite.config.ts`](vite.config.ts) — includes the dev plugin that hot-reloads on Lottie changes.
