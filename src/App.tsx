@@ -4,13 +4,37 @@ import { PlaybackControls } from "@/components/PlaybackControls";
 import { PropertiesPanel, type ControlMeta } from "@/components/PropertiesPanel";
 import { ZoomControls } from "@/components/ZoomControls";
 import { LottiePlayer, type AnimationSlot } from "@/lib/lottie-player";
-import { installRemote, removeRemote } from "@/lib/remote";
 
 // The Lottie file lives in /public and is fetched at startup.
 const LOTTIE_URL = "/lottie.json";
 // Optional sidecar describing how to present the animation's slottable
 // properties (labels, slider ranges). Missing file = no properties panel.
 const CONTROLS_URL = "/controls.json";
+
+/**
+ * Startup playback options read from the URL query string. Together with the
+ * `data-testid="lottie-canvas"` hook on the canvas, these let an automated
+ * agent driving the browser pin the animation to an exact frame and screenshot
+ * it deterministically — no console bridge or slider-dragging required.
+ *
+ * - `?frame=300` seeks to frame 300 and (because a pinned frame is meant to be
+ *   inspected) holds it paused.
+ * - `?paused=1` starts paused; `?paused=0` forces autoplay even with a frame
+ *   pinned. Omitted, autoplay is on unless a frame is pinned.
+ */
+function readStartupOptions(search: string): { frame: number | null; paused: boolean } {
+  const params = new URLSearchParams(search);
+
+  const rawFrame = params.get("frame");
+  const parsed = rawFrame === null ? NaN : Number(rawFrame);
+  const frame = Number.isFinite(parsed) ? parsed : null;
+
+  const rawPaused = params.get("paused");
+  // A pinned frame defaults to paused; otherwise default to playing.
+  const paused = rawPaused === null ? frame !== null : rawPaused !== "0";
+
+  return { frame, paused };
+}
 
 async function loadControlsMeta(): Promise<Record<string, ControlMeta>> {
   try {
@@ -105,8 +129,10 @@ export default function App() {
         setFps(player.getFps());
         setSlots(player.getSlots());
         setControlsMeta(meta);
-        installRemote(player);
-        player.play();
+
+        const { frame, paused } = readStartupOptions(window.location.search);
+        if (frame !== null) player.seek(frame);
+        if (!paused) player.play();
       } catch (e) {
         if (!disposed) setError(e instanceof Error ? e.message : String(e));
       }
@@ -118,7 +144,6 @@ export default function App() {
     return () => {
       disposed = true;
       observer.disconnect();
-      removeRemote();
       playerRef.current?.dispose();
       playerRef.current = null;
     };
@@ -126,7 +151,7 @@ export default function App() {
 
   return (
     <div className="dark relative h-full w-full overflow-hidden bg-neutral-950">
-      <canvas ref={canvasRef} className="block h-full w-full" />
+      <canvas ref={canvasRef} data-testid="lottie-canvas" className="block h-full w-full" />
 
       {error && (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-destructive">

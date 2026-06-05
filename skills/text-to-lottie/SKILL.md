@@ -241,30 +241,25 @@ generic 0–100 range. Like `lottie.json`, it hot-reloads on save.
 
 When you drive the page through a browser tool, **do not pixel-drag the slider or
 hunt for the play button** — it's unreliable and you can't land on an exact
-frame. The player exposes a stable global, `window.lottie`, for exactly this.
-Run JS in the page console / eval bridge:
+frame. Instead, **pin the frame in the URL** and read the canvas by its test id:
 
-```js
-window.lottie.getState()
-// → { playing, currentFrame, totalFrames, fps, durationSeconds, progress, zoom }
-
-window.lottie.pause()
-window.lottie.play()
-window.lottie.seek(45)            // jump to frame 45 (pauses; returns the frame landed on)
-window.lottie.step(1)            // nudge one frame forward (negative goes back)
-window.lottie.seekToProgress(0.5) // halfway through, by fraction 0..1
-window.lottie.seekToTime(1.5)     // 1.5 seconds in
-
-window.lottie.getSlots()                 // live-editable properties + values
-window.lottie.setSlot("ballColor", [1, 0, 0, 1])
+```
+http://localhost:5173/?frame=60&paused=1
 ```
 
-`seek*` and `step` **pause first** so the frame holds still for a screenshot;
-call `play()` to resume. This is the right way to inspect a specific moment of
-the animation (e.g. "is the ball at the bottom at frame 60?"): `pause()`,
-`seek(60)`, then screenshot. The global appears once the animation has loaded;
-if it's `undefined`, the page hasn't finished loading or the Lottie failed to
-parse (check the on-screen error).
+- `?frame=N` seeks to frame `N` on load and holds it paused, so the moment sits
+  still for a screenshot. This is the right way to inspect a specific frame
+  (e.g. "is the ball at the bottom at frame 60?"): open `?frame=60`, then
+  screenshot.
+- `?paused=1` starts paused (at frame 0, or at `frame` if also given);
+  `?paused=0` forces autoplay even with a frame pinned.
+- With no query params the animation autoplays as usual.
+
+To change the inspected frame, navigate to a new URL (or just edit the query
+string and reload). The canvas carries `data-testid="lottie-canvas"`, so a
+browser tool can target it directly for screenshots. If the canvas is blank,
+the page hasn't finished loading or the Lottie failed to parse (check the
+on-screen error).
 
 ## Before you finish — checklist
 
@@ -279,6 +274,6 @@ parse (check the on-screen error).
    with `npm run dev`. A blank canvas (no error) → re-check the group wrapping.
 7. The player is running and the preview URL has been opened or reported. When a
    browser tool is available, verify the page shows a nonblank rendered
-   animation before finalizing — drive playback with `window.lottie` (see
-   "Controlling playback from a browser agent"), e.g. `pause()` + `seek()` to a
-   key frame, then screenshot, rather than dragging the on-screen slider.
+   animation before finalizing — pin a key frame via the URL (see "Controlling
+   playback from a browser agent"), e.g. open `?frame=60&paused=1` and
+   screenshot, rather than dragging the on-screen slider.
